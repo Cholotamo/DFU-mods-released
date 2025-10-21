@@ -44,6 +44,7 @@ public class HandheldTorches : MonoBehaviour
     bool stowOnSwimming;
     bool twoHandedRelaxed;
     bool lanternRelaxed;
+    bool lanternHidden;
 
     public float throwStrength = 1f;
     public float throwAngle = 15f;
@@ -132,7 +133,7 @@ public class HandheldTorches : MonoBehaviour
 
     int offsetFrame = 0;
     int currentFrame;
-    float animationTime = 0.0625f;
+    float animationTime = 0.04f;
     float animationTimer;
 
     int animTorchLength;
@@ -660,13 +661,23 @@ public class HandheldTorches : MonoBehaviour
             GameManager.Instance.PlayerEntity.LightSource = lastLightSource;
             lastLightSource = null;
         }
+        else if (lanternRelaxed && HasFreeHand && lightSource != null && lightSource.TemplateIndex == 248 && lanternHidden)
+        {
+            RefreshSprite();       // sets guard pose/target, animates back on-screen
+            lanternHidden = false;
+        }
 
         //animate sprite
         if (showSprite)
         {
             if (lightSource != null)
             {
-                if (lightSource.TemplateIndex == 248)   //is a lantern
+                if (lanternRelaxed && !HasFreeHand && lightSource.TemplateIndex == (int)UselessItems2.Lantern)
+                {
+                    offsetFrame = -1;
+                    lanternHidden = true;
+                }
+                else if (lightSource.TemplateIndex == 248)   //is a lantern
                     offsetFrame = 4;
                 else if (lightSource.TemplateIndex == 247) //is a torch
                     offsetFrame = 0;
@@ -1522,7 +1533,18 @@ public class HandheldTorches : MonoBehaviour
                     //we ignited a light
                     audioSourceOneShot.PlayOneShot((int)SoundClips.Ignite, 0, 0.5f);
                     DaggerfallUI.Instance.PopupMessage(Instance.messageIgnite + GameManager.Instance.PlayerEntity.LightSource.GetMacroDataSource().Condition().ToLower() + " " + GameManager.Instance.PlayerEntity.LightSource.LongName.ToLower());
-                    RefreshSprite();
+                    bool willShowSprite = HasFreeHand || !(lanternRelaxed && GameManager.Instance.PlayerEntity.LightSource.TemplateIndex == (int)UselessItems2.Lantern);
+                    if (willShowSprite)
+                    {
+                        RefreshSprite();
+                    }
+                    else
+                    {
+                        offsetFrame = -1;        // hide sprite this frame
+                        SetSheathe();            // place off-screen
+                        positionCurrent = positionTarget;
+                        lanternHidden = true;
+                    }
                 }
             }
         }
